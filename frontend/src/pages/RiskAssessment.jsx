@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { api } from '../api';
 
-export default function RiskAssessment({ config, onAssessmentComplete }) {
+export default function RiskAssessment({ config, initialCase, onAssessmentComplete }) {
   const categories = config?.categories || [
     'Financial', 'Operational', 'Cybersecurity', 'Environmental', 'Business', 'Safety', 'Project', 'Infrastructure'
   ];
@@ -105,7 +105,7 @@ export default function RiskAssessment({ config, onAssessmentComplete }) {
     { title: 'Regulatory Compliance Finding', Category: 'Business', Severity: 7, Likelihood: 4, Exposure: 5, Frequency: 2, Duration: 4, Impact: 7, Historical_Occurrence: 1, Control_Effectiveness: 7 }
   ];
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     case_title: 'Critical Database Outage',
     Category: 'Cybersecurity',
     Severity: 8,
@@ -116,8 +116,9 @@ export default function RiskAssessment({ config, onAssessmentComplete }) {
     Impact: 8,
     Historical_Occurrence: 3,
     Control_Effectiveness: 4,
-    chosen_model: 'auto'
-  });
+    chosen_model: 'auto',
+    ...(initialCase || {}),
+  }));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -312,7 +313,7 @@ export default function RiskAssessment({ config, onAssessmentComplete }) {
                   cursor: 'pointer'
                 }}
               >
-                <option value="auto">Auto (Optimal - SVM RBF)</option>
+                <option value="auto">Auto (best cross-validated model)</option>
                 <option value="svm">Support Vector Machine (SVM)</option>
                 <option value="knn">K-Nearest Neighbors (KNN)</option>
                 <option value="decision_tree">Decision Tree Classifier</option>

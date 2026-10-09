@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   ChevronLeft, 
@@ -14,31 +14,38 @@ export default function DatasetExplorer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedRisk, setSelectedRisk] = useState('All');
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [page, limit]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.getDatasetDetails(limit, page * limit);
       setData(res);
     } catch (err) {
       console.error('Dataset fetch error:', err);
+      setError(err.message || 'The historical dataset could not be loaded.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, page]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const records = data?.records || [];
   const stats = data?.numeric_stats || {};
-  const totalRecords = data?.total_records || 1200;
+  const totalRecords = data?.total_records ?? 0;
+  const missingValues = data?.missing_values || {};
+  const missingCount = Object.values(missingValues).reduce((total, count) => total + count, 0);
+  const outlierCount = Object.values(stats).reduce((total, feature) => total + (feature.outliers_detected || 0), 0);
+  const categories = Object.keys(data?.category_distribution || {});
 
   const filteredRecords = records.filter((r) => {
     const matchesSearch = searchQuery === '' || 
-      r.Case_ID.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.Category.toLowerCase().includes(searchQuery.toLowerCase());
+      String(r.Case_ID || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(r.Category || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCat = selectedCategory === 'All' || r.Category === selectedCategory;
     const matchesRisk = selectedRisk === 'All' || r.Risk_Level === selectedRisk;
     return matchesSearch && matchesCat && matchesRisk;
@@ -52,43 +59,24 @@ export default function DatasetExplorer() {
           Dataset & Data Quality Inspection
         </h2>
         <p style={{ fontSize: '12px', color: '#a1a1aa' }}>
-          Explore 1,200 multi-domain historical benchmark cases, missing value audits, and IQR outlier statistics
+          Explore the current historical records, feature distributions, and available data-quality statistics.
         </p>
       </div>
 
+      {error && (
+        <div className="status-message status-error" role="alert">
+          <div><strong>Dataset unavailable</strong><span>{error}</span></div>
+          <button type="button" className="btn-secondary" onClick={fetchData}>Retry</button>
+        </div>
+      )}
+
       {/* Stats Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-        <div className="clean-box" style={{ padding: '16px' }}>
-          <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Volume</span>
-          <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#f4f4f5', marginTop: '2px' }}>
-            {totalRecords.toLocaleString()} Cases
-          </div>
-          <span style={{ fontSize: '11px', color: '#a1a1aa' }}>8 Domain Categories</span>
-        </div>
-
-        <div className="clean-box" style={{ padding: '16px' }}>
-          <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Missing Values</span>
-          <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#10b981', marginTop: '2px' }}>
-            0 Missing
-          </div>
-          <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Complete Feature Data</span>
-        </div>
-
-        <div className="clean-box" style={{ padding: '16px' }}>
-          <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Outlier Handling</span>
-          <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#f59e0b', marginTop: '2px' }}>
-            IQR Winsorized
-          </div>
-          <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Bounded to 1.5 IQR</span>
-        </div>
-
-        <div className="clean-box" style={{ padding: '16px' }}>
-          <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Feature Space</span>
-          <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#f4f4f5', marginTop: '2px' }}>
-            8 Num + 1 Cat
-          </div>
-          <span style={{ fontSize: '11px', color: '#a1a1aa' }}>StandardScaler + OneHot</span>
-        </div>
+      <div className="dataset-overview">
+        <div><span>Records</span><strong>{data ? totalRecords.toLocaleString() : '--'}</strong></div>
+        <div><span>Categories</span><strong>{data ? categories.length : '--'}</strong></div>
+        <div><span>Missing values</span><strong>{data ? missingCount.toLocaleString() : '--'}</strong></div>
+        <div><span>IQR outliers</span><strong>{data ? outlierCount.toLocaleString() : '--'}</strong></div>
+        <div><span>Features</span><strong>{data ? data.columns.length : '--'}</strong></div>
       </div>
 
       {/* Feature Statistics Table */}
@@ -113,6 +101,9 @@ export default function DatasetExplorer() {
               </tr>
             </thead>
             <tbody>
+              {!data && (
+                <tr><td colSpan="9" className="table-empty">{loading ? 'Loading dataset statistics...' : 'Statistics are unavailable.'}</td></tr>
+              )}
               {Object.entries(stats).map(([feat, s]) => (
                 <tr key={feat} style={{ borderBottom: '1px solid #1f1f23' }}>
                   <td style={{ padding: '8px', fontWeight: 500, color: '#f4f4f5' }}>{feat.replace('_', ' ')}</td>
@@ -156,6 +147,7 @@ export default function DatasetExplorer() {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search by case ID or category"
                 style={{ background: 'transparent', border: 'none', color: '#f4f4f5', fontSize: '12px', outline: 'none', width: '110px' }}
               />
             </div>
@@ -169,6 +161,18 @@ export default function DatasetExplorer() {
               {['Financial', 'Operational', 'Cybersecurity', 'Environmental', 'Business', 'Safety', 'Project', 'Infrastructure'].map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
+            </select>
+
+            <select
+              aria-label="Rows per page"
+              value={limit}
+              onChange={(e) => {
+                setPage(0);
+                setLimit(Number(e.target.value));
+              }}
+              style={{ backgroundColor: '#09090b', border: '1px solid #27272a', padding: '4px 8px', borderRadius: '5px', color: '#a1a1aa', fontSize: '12px' }}
+            >
+              {[10, 20, 50].map((pageSize) => <option key={pageSize} value={pageSize}>{pageSize} rows</option>)}
             </select>
 
             <select
@@ -202,7 +206,13 @@ export default function DatasetExplorer() {
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map((r, idx) => (
+              {loading ? (
+                <tr><td colSpan="11" className="table-empty">Loading historical records...</td></tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr><td colSpan="11" className="table-empty">
+                  {error ? 'Records could not be loaded.' : 'No records match the current page and filters.'}
+                </td></tr>
+              ) : filteredRecords.map((r, idx) => (
                 <tr key={r.Case_ID || idx} style={{ borderBottom: '1px solid #1f1f23' }}>
                   <td style={{ padding: '8px', fontWeight: 500, fontFamily: 'var(--font-mono)', color: '#f4f4f5' }}>#{r.Case_ID}</td>
                   <td style={{ padding: '8px', color: '#a1a1aa' }}>{r.Category}</td>
@@ -227,13 +237,13 @@ export default function DatasetExplorer() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #27272a' }}>
           <span style={{ fontSize: '11px', color: '#71717a' }}>
-            Page {page + 1} of {Math.ceil(totalRecords / limit)}
+            Page {page + 1} of {Math.max(1, Math.ceil(totalRecords / limit))}
           </span>
 
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
               onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
+              disabled={!data || page === 0}
               className="btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px' }}
             >
@@ -242,7 +252,7 @@ export default function DatasetExplorer() {
 
             <button
               onClick={() => setPage(page + 1)}
-              disabled={(page + 1) * limit >= totalRecords}
+              disabled={!data || (page + 1) * limit >= totalRecords}
               className="btn-secondary"
               style={{ padding: '4px 10px', fontSize: '11px' }}
             >

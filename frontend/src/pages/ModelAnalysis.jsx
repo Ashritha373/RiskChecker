@@ -5,7 +5,7 @@ import {
 import ConfusionMatrix from '../components/ConfusionMatrix';
 import { api } from '../api';
 
-export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
+export default function ModelAnalysis({ modelDetails, onRetrainSuccess, connectionError, onRetry }) {
   const [details, setDetails] = useState(modelDetails);
   const [activeModelTab, setActiveModelTab] = useState('svm');
 
@@ -48,7 +48,7 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
   const evals = details?.evaluations || {};
   const cvs = details?.cross_validations || {};
   const importances = details?.feature_importances || [];
-  const bestModelKey = details?.best_model_name || 'svm';
+  const bestModelKey = details?.best_model_name;
 
   const currentEval = evals[activeModelTab] || {};
   const currentCV = cvs[activeModelTab] || {};
@@ -61,9 +61,19 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
           Model Evaluation & Cross-Validation
         </h2>
         <p style={{ fontSize: '12px', color: '#a1a1aa' }}>
-          Performance metrics across KNN, SVM, and Decision Tree with 5-Fold Stratified Cross-Validation
+          Holdout performance, cross-validation, and feature importance from the trained models.
         </p>
       </div>
+
+      {connectionError && !details && (
+        <div className="status-message status-error" role="alert">
+          <div>
+            <strong>Model evaluation is unavailable.</strong>
+            <span>{connectionError}</span>
+          </div>
+          <button type="button" className="btn-secondary" onClick={onRetry}>Retry connection</button>
+        </div>
+      )}
 
       {/* Model Selector Tabs */}
       <div style={{ display: 'flex', gap: '6px', borderBottom: '1px solid #27272a', paddingBottom: '8px' }}>
@@ -109,35 +119,35 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
         {/* Test Metrics */}
         <div className="clean-box" style={{ padding: '20px' }}>
           <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#f4f4f5', marginBottom: '12px' }}>
-            Holdout Test Metrics (20% Split, N=240)
+            Holdout Test Metrics (N={details?.test_samples ?? '--'})
           </h4>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '16px' }}>
             <div className="clean-box-subtle" style={{ padding: '10px', textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Accuracy</span>
               <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#f4f4f5', marginTop: '2px' }}>
-                {currentEval.accuracy ? `${(currentEval.accuracy * 100).toFixed(1)}%` : '--'}
+                {Number.isFinite(currentEval.accuracy) ? `${(currentEval.accuracy * 100).toFixed(1)}%` : '--'}
               </div>
             </div>
 
             <div className="clean-box-subtle" style={{ padding: '10px', textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>F1-Score (Macro)</span>
               <div style={{ fontSize: '18px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#f4f4f5', marginTop: '2px' }}>
-                {currentEval.f1_macro ? (currentEval.f1_macro * 100).toFixed(1) + '%' : '--'}
+                {Number.isFinite(currentEval.f1_macro) ? `${(currentEval.f1_macro * 100).toFixed(1)}%` : '--'}
               </div>
             </div>
 
             <div className="clean-box-subtle" style={{ padding: '10px', textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Precision</span>
               <div style={{ fontSize: '16px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#a1a1aa', marginTop: '2px' }}>
-                {currentEval.precision_macro ? (currentEval.precision_macro * 100).toFixed(1) + '%' : '--'}
+                {Number.isFinite(currentEval.precision_macro) ? `${(currentEval.precision_macro * 100).toFixed(1)}%` : '--'}
               </div>
             </div>
 
             <div className="clean-box-subtle" style={{ padding: '10px', textAlign: 'center' }}>
               <span style={{ fontSize: '10px', color: '#71717a', textTransform: 'uppercase' }}>Recall</span>
               <div style={{ fontSize: '16px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: '#a1a1aa', marginTop: '2px' }}>
-                {currentEval.recall_macro ? (currentEval.recall_macro * 100).toFixed(1) + '%' : '--'}
+                {Number.isFinite(currentEval.recall_macro) ? `${(currentEval.recall_macro * 100).toFixed(1)}%` : '--'}
               </div>
             </div>
           </div>
@@ -158,7 +168,7 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
                     {cls} Risk
                   </span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: '#a1a1aa' }}>
-                    P: {(cm.precision * 100).toFixed(0)}% &bull; R: {(cm.recall * 100).toFixed(0)}% &bull; F1: {(cm.f1 * 100).toFixed(0)}%
+                    P: {Number.isFinite(cm.precision) ? `${(cm.precision * 100).toFixed(0)}%` : '--'} &bull; R: {Number.isFinite(cm.recall) ? `${(cm.recall * 100).toFixed(0)}%` : '--'} &bull; F1: {Number.isFinite(cm.f1) ? `${(cm.f1 * 100).toFixed(0)}%` : '--'}
                   </span>
                 </div>
               ))}
@@ -167,22 +177,26 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
         </div>
 
         {/* Confusion Matrix */}
-        <ConfusionMatrix
-          matrix={currentEval.confusion_matrix || [[0, 0, 0], [0, 0, 0], [0, 0, 0]]}
-          classes={currentEval.classes || ['Low', 'Medium', 'High']}
-          modelName={currentEval.display_name}
-        />
+        {Array.isArray(currentEval.confusion_matrix) ? (
+          <ConfusionMatrix
+            matrix={currentEval.confusion_matrix}
+            classes={currentEval.classes || []}
+            modelName={currentEval.display_name}
+          />
+        ) : (
+          <div className="clean-box data-unavailable">Confusion matrix is unavailable until model evaluation data loads.</div>
+        )}
       </div>
 
       {/* Stratified K-Fold Cross-Validation Table */}
       <div className="clean-box" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#f4f4f5' }}>
-            Stratified {currentCV.n_splits || 5}-Fold Cross-Validation Telemetry
+            Stratified {currentCV.n_splits ?? '--'}-Fold Cross-Validation
           </h4>
-          <span style={{ fontSize: '11px', color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
-            {currentCV.stability_status || 'Stable'}
-          </span>
+          {currentCV.stability_status && (
+            <span className="stability-label">{currentCV.stability_status}</span>
+          )}
         </div>
 
         <div style={{ overflowX: 'auto', marginBottom: '12px' }}>
@@ -198,7 +212,7 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
               </tr>
             </thead>
             <tbody>
-              {currentCV.folds && currentCV.folds.map((f) => (
+              {currentCV.folds?.length ? currentCV.folds.map((f) => (
                 <tr key={f.fold} style={{ borderBottom: '1px solid #1f1f23' }}>
                   <td style={{ padding: '8px', fontWeight: 500, color: '#f4f4f5', fontFamily: 'var(--font-mono)' }}>Fold {f.fold}</td>
                   <td style={{ padding: '8px', color: '#a1a1aa' }}>{f.train_samples} / {f.val_samples}</td>
@@ -207,14 +221,16 @@ export default function ModelAnalysis({ modelDetails, onRetrainSuccess }) {
                   <td style={{ padding: '8px', fontFamily: 'var(--font-mono)', color: '#a1a1aa' }}>{(f.recall_macro * 100).toFixed(1)}%</td>
                   <td style={{ padding: '8px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#f4f4f5' }}>{(f.f1_macro * 100).toFixed(1)}%</td>
                 </tr>
-              ))}
+              )) : (
+                <tr><td colSpan="6" className="table-empty">Cross-validation results are unavailable.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#71717a', paddingTop: '8px', borderTop: '1px solid #27272a' }}>
-          <span>Mean Accuracy: <strong style={{ color: '#f4f4f5', fontFamily: 'var(--font-mono)' }}>{(currentCV.mean_accuracy * 100).toFixed(1)}% &plusmn; {(currentCV.std_accuracy * 100).toFixed(1)}%</strong></span>
-          <span>Mean F1 (Macro): <strong style={{ color: '#f4f4f5', fontFamily: 'var(--font-mono)' }}>{(currentCV.mean_f1_macro * 100).toFixed(1)}% &plusmn; {(currentCV.std_f1_macro * 100).toFixed(1)}%</strong></span>
+          <span>Mean Accuracy: <strong style={{ color: '#f4f4f5', fontFamily: 'var(--font-mono)' }}>{Number.isFinite(currentCV.mean_accuracy) ? `${(currentCV.mean_accuracy * 100).toFixed(1)}%` : '--'} &plusmn; {Number.isFinite(currentCV.std_accuracy) ? `${(currentCV.std_accuracy * 100).toFixed(1)}%` : '--'}</strong></span>
+          <span>Mean F1 (Macro): <strong style={{ color: '#f4f4f5', fontFamily: 'var(--font-mono)' }}>{Number.isFinite(currentCV.mean_f1_macro) ? `${(currentCV.mean_f1_macro * 100).toFixed(1)}%` : '--'} &plusmn; {Number.isFinite(currentCV.std_f1_macro) ? `${(currentCV.std_f1_macro * 100).toFixed(1)}%` : '--'}</strong></span>
         </div>
       </div>
 

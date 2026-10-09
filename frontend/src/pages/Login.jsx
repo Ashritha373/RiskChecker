@@ -47,7 +47,7 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div style={{
+    <div className="login-screen" style={{
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',

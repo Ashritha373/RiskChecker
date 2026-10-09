@@ -6,21 +6,21 @@ export default function RiskGauge({ score = 50, level = 'Medium', confidence = 0
 
   const levelConfig = {
     Low: {
-      color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.08)',
-      border: 'rgba(16, 185, 129, 0.2)',
+      color: '#55775b',
+      bg: '#e5ede2',
+      border: '#cfddce',
       label: 'Low Risk',
     },
     Medium: {
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.08)',
-      border: 'rgba(245, 158, 11, 0.2)',
+      color: '#93651f',
+      bg: '#f7edda',
+      border: '#ead9b6',
       label: 'Medium Risk',
     },
     High: {
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.08)',
-      border: 'rgba(239, 68, 68, 0.2)',
+      color: '#a4524d',
+      bg: '#f5e5e1',
+      border: '#e8cbc6',
       label: 'High Risk',
     },
   };
@@ -35,7 +35,7 @@ export default function RiskGauge({ score = 50, level = 'Medium', confidence = 0
           <path
             d="M 20 100 A 80 80 0 0 1 180 100"
             fill="none"
-            stroke="#27272a"
+            stroke="#e3e4dc"
             strokeWidth="8"
             strokeLinecap="round"
           />
@@ -53,28 +53,28 @@ export default function RiskGauge({ score = 50, level = 'Medium', confidence = 0
           />
 
           {/* Pivot */}
-          <circle cx="100" cy="100" r="5" fill="#09090b" stroke="#52525b" strokeWidth="2" />
+          <circle cx="100" cy="100" r="5" fill="#fffefc" stroke="#a4aa9e" strokeWidth="2" />
 
           {/* Needle */}
           <g
             transform={`rotate(${angle}, 100, 100)`}
             style={{ transition: 'transform 0.5s ease' }}
           >
-            <polygon points="98,100 102,100 100,35" fill="#ffffff" />
+            <polygon points="98,100 102,100 100,35" fill="#465246" />
           </g>
 
-          <text x="20" y="112" fill="#71717a" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">0</text>
-          <text x="100" y="15" fill="#71717a" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">50</text>
-          <text x="180" y="112" fill="#71717a" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">100</text>
+          <text x="20" y="112" fill="#73796f" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">0</text>
+          <text x="100" y="15" fill="#73796f" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">50</text>
+          <text x="180" y="112" fill="#73796f" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">100</text>
         </svg>
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '-2px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '3px' }}>
-          <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#f4f4f5' }}>
+          <span style={{ fontSize: '28px', fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#343a35' }}>
             {normalizedScore}
           </span>
-          <span style={{ fontSize: '13px', color: '#71717a' }}>/ 100</span>
+          <span style={{ fontSize: '13px', color: '#73796f' }}>/ 100</span>
         </div>
 
         <div style={{
@@ -92,9 +92,9 @@ export default function RiskGauge({ score = 50, level = 'Medium', confidence = 0
           {current.label}
         </div>
 
-        {confidence !== undefined && (
-          <div style={{ fontSize: '11px', color: '#71717a', marginTop: '4px' }}>
-            Confidence: <strong style={{ color: '#a1a1aa' }}>{Math.round(confidence * 100)}%</strong>
+        {confidence !== undefined && confidence !== null && Number.isFinite(confidence) && (
+          <div style={{ fontSize: '11px', color: '#73796f', marginTop: '4px' }}>
+            Confidence: <strong style={{ color: '#596157' }}>{Math.round(confidence * 100)}%</strong>
           </div>
         )}
       </div>

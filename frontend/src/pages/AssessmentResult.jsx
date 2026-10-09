@@ -29,10 +29,10 @@ export default function AssessmentResult({ result, onStartWhatIf, onNewAssessmen
   const {
     case_title = 'Risk Assessment Case',
     case_inputs = {},
-    predicted_risk = 'Medium',
-    risk_score = 50,
-    confidence = 0.85,
-    probabilities = { Low: 0.1, Medium: 0.8, High: 0.1 },
+    predicted_risk,
+    risk_score,
+    confidence,
+    probabilities,
     selected_model = {},
     all_model_predictions = {},
     contributing_factors = [],
@@ -67,7 +67,8 @@ export default function AssessmentResult({ result, onStartWhatIf, onNewAssessmen
   const getRiskColor = (level) => {
     if (level === 'Low') return '#10b981';
     if (level === 'Medium') return '#f59e0b';
-    return '#ef4444';
+    if (level === 'High') return '#ef4444';
+    return '#73796f';
   };
 
   return (
@@ -124,12 +125,16 @@ export default function AssessmentResult({ result, onStartWhatIf, onNewAssessmen
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
         {/* Left: Score Gauge */}
         <div className="clean-box" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <RiskGauge
-            score={risk_score}
-            level={predicted_risk}
-            confidence={confidence}
-            size={220}
-          />
+          {Number.isFinite(risk_score) && ['Low', 'Medium', 'High'].includes(predicted_risk) ? (
+            <RiskGauge
+              score={risk_score}
+              level={predicted_risk}
+              confidence={confidence}
+              size={220}
+            />
+          ) : (
+            <div className="data-unavailable">Prediction metrics are unavailable.</div>
+          )}
         </div>
 
         {/* Right: Probability Vectors & Formula */}
@@ -145,20 +150,20 @@ export default function AssessmentResult({ result, onStartWhatIf, onNewAssessmen
                 { label: 'Medium Risk', key: 'Medium', color: '#f59e0b' },
                 { label: 'High Risk', key: 'High', color: '#ef4444' },
               ].map(({ label, key, color }) => {
-                const probVal = probabilities[key] || 0.0;
-                const probPct = Math.round(probVal * 100);
+                const probVal = probabilities?.[key];
+                const probPct = Number.isFinite(probVal) ? Math.round(probVal * 100) : null;
 
                 return (
                   <div key={key}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '3px' }}>
                       <span style={{ fontWeight: 500, color }}>{label}</span>
                       <span style={{ fontFamily: 'var(--font-mono)', color: '#a1a1aa' }}>
-                        {probPct}% ({probVal.toFixed(3)})
+                        {probPct === null ? 'Unavailable' : `${probPct}% (${probVal.toFixed(3)})`}
                       </span>
                     </div>
                     <div style={{ height: '4px', backgroundColor: '#18181b', borderRadius: '2px', overflow: 'hidden' }}>
                       <div style={{
-                        width: `${probPct}%`,
+                        width: `${probPct ?? 0}%`,
                         height: '100%',
                         backgroundColor: color,
                         borderRadius: '2px'
@@ -179,7 +184,7 @@ export default function AssessmentResult({ result, onStartWhatIf, onNewAssessmen
             fontSize: '11px',
             color: '#a1a1aa'
           }}>
-            <strong style={{ color: '#f4f4f5' }}>Calibrated Score Calculation:</strong> Score = (P_Low × 15) + (P_Med × 55) + (P_High × 95) = <span style={{ fontFamily: 'var(--font-mono)', color: '#f4f4f5', fontWeight: 600 }}>{risk_score}</span>
+            <strong style={{ color: '#f4f4f5' }}>Calibrated Score Calculation:</strong> Score = (P_Low × 15) + (P_Med × 55) + (P_High × 95) = <span style={{ fontFamily: 'var(--font-mono)', color: '#f4f4f5', fontWeight: 600 }}>{Number.isFinite(risk_score) ? risk_score : 'Unavailable'}</span>
           </div>
         </div>
       </div>

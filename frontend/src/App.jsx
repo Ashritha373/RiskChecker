@@ -9,7 +9,6 @@ import ModelAnalysis from './pages/ModelAnalysis';
 import DatasetExplorer from './pages/DatasetExplorer';
 import History from './pages/History';
 import { api } from './api';
-import { Shield } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -26,12 +25,12 @@ export default function App() {
   const [summary, setSummary] = useState(null);
   const [modelDetails, setModelDetails] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   
   // Assessment Result state
   const [currentResult, setCurrentResult] = useState(null);
   const [whatIfCase, setWhatIfCase] = useState(null);
   const [prefilledFormCase, setPrefilledFormCase] = useState(null);
-
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -47,9 +46,11 @@ export default function App() {
       setSummary(summ);
       setModelDetails(mDetails);
       setIsConnected(true);
+      setConnectionError(null);
     } catch (err) {
       console.warn('Backend connecting...', err);
       setIsConnected(false);
+      setConnectionError(err.message || 'The backend could not be reached.');
       setTimeout(loadInitialData, 3000);
     }
   };
@@ -57,6 +58,7 @@ export default function App() {
   const handleAssessmentComplete = (result, inputData) => {
     setCurrentResult(result);
     setWhatIfCase(inputData);
+    setPrefilledFormCase(null);
     setActiveTab('result');
   };
 
@@ -85,8 +87,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#09090b', color: '#f4f4f5' }}>
-      {/* Top Navbar */}
+    <div className="app-shell">
       <Navbar
         activeTab={activeTab === 'result' ? 'assess' : activeTab}
         setActiveTab={(tab) => {
@@ -99,17 +100,21 @@ export default function App() {
       />
 
       {/* Main Content Viewport */}
-      <main style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '24px 20px' }}>
+      <div className="app-workspace">
+      <main className="main-content">
         {activeTab === 'dashboard' && (
           <Dashboard
             systemSummary={summary}
             setActiveTab={setActiveTab}
+            connectionError={connectionError}
+            onRetry={loadInitialData}
           />
         )}
 
         {activeTab === 'assess' && (
           <RiskAssessment
             config={config}
+            initialCase={prefilledFormCase}
             onAssessmentComplete={handleAssessmentComplete}
           />
         )}
@@ -126,7 +131,6 @@ export default function App() {
         {activeTab === 'what-if' && (
           <WhatIfAnalysis
             initialCase={whatIfCase}
-            config={config}
           />
         )}
 
@@ -134,6 +138,8 @@ export default function App() {
           <ModelAnalysis
             modelDetails={modelDetails}
             onRetrainSuccess={handleRetrainSuccess}
+            connectionError={connectionError}
+            onRetry={loadInitialData}
           />
         )}
 
@@ -149,35 +155,11 @@ export default function App() {
         )}
       </main>
 
-      {/* Clean Footer */}
-      <footer style={{
-        backgroundColor: '#09090b',
-        borderTop: '1px solid #1f1f23',
-        padding: '14px 24px',
-        marginTop: 'auto'
-      }}>
-        <div style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          fontSize: '11px',
-          color: '#71717a'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Shield size={13} color="#71717a" />
-            <span style={{ color: '#a1a1aa' }}>Risk Decision Support System</span>
-            <span>&bull;</span>
-            <span>Enterprise Risk Intelligence</span>
-          </div>
-          <div>
-            Support Vector Machine &bull; K-Nearest Neighbors &bull; Decision Tree
-          </div>
-        </div>
+      <footer className="app-footer">
+        <span>RiskChecker <span aria-hidden="true">·</span> Risk assessment workspace</span>
+        <span>Support Vector Machine <span aria-hidden="true">·</span> K-Nearest Neighbors <span aria-hidden="true">·</span> Decision Tree</span>
       </footer>
+      </div>
     </div>
   );
 }

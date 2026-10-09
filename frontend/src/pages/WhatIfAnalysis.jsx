@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  GitCompare, 
   RotateCcw, 
   ArrowRight,
   ShieldCheck,
@@ -9,7 +8,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 
-export default function WhatIfAnalysis({ initialCase, config }) {
+export default function WhatIfAnalysis({ initialCase }) {
   // Concrete Real-World Benchmarks for Sensitivity Evaluation
   const dimensionGuides = {
     Impact: {
@@ -106,32 +105,50 @@ export default function WhatIfAnalysis({ initialCase, config }) {
     Control_Effectiveness: 4
   };
 
-  const [baseInputs, setBaseInputs] = useState(defaultBase);
-  const [modInputs, setModInputs] = useState(defaultBase);
+  const [baseInputs] = useState(() => defaultBase);
+  const [modInputs, setModInputs] = useState(() => defaultBase);
   const [simResult, setSimResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (initialCase) {
-      setBaseInputs(initialCase);
-      setModInputs(initialCase);
-      runSimulation(initialCase, initialCase);
-    } else {
-      runSimulation(baseInputs, modInputs);
-    }
-  }, [initialCase]);
+  const [loading, setLoading] = useState(true);
+  const [simError, setSimError] = useState(null);
+  const latestRequestId = useRef(0);
 
   const runSimulation = async (orig, mod) => {
+    const requestId = ++latestRequestId.current;
     setLoading(true);
+    setSimError(null);
+    setSimResult(null);
     try {
       const res = await api.runWhatIf(orig, mod, 'auto');
-      setSimResult(res);
+      if (requestId === latestRequestId.current) setSimResult(res);
     } catch (err) {
       console.error('What-if error:', err);
+      if (requestId === latestRequestId.current) {
+        setSimError(err.message || 'The scenario could not be simulated.');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestId.current) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const requestId = ++latestRequestId.current;
+    api.runWhatIf(baseInputs, baseInputs, 'auto')
+      .then((result) => {
+        if (requestId === latestRequestId.current) {
+          setSimResult(result);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (requestId === latestRequestId.current) {
+          setSimError(err.message || 'The scenario could not be simulated.');
+          setLoading(false);
+        }
+      });
+    return () => {
+      latestRequestId.current += 1;
+    };
+  }, [baseInputs]);
 
   const handleModChange = (field, val) => {
     const updated = {
@@ -179,7 +196,7 @@ export default function WhatIfAnalysis({ initialCase, config }) {
   };
 
   const comp = simResult?.comparison || {};
-  const scoreDelta = comp.score_delta || 0.0;
+  const scoreDelta = Number.isFinite(comp.score_delta) ? comp.score_delta : null;
   const isMitigated = scoreDelta < 0;
   const isEscalated = scoreDelta > 0;
 
@@ -244,6 +261,12 @@ export default function WhatIfAnalysis({ initialCase, config }) {
       </div>
 
       {/* Main Comparative Grid */}
+      {simError && (
+        <div className="status-message status-error" role="alert">
+          <div><strong>Simulation unavailable</strong><span>{simError}</span></div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
         {/* Parameters Workbench */}
         <div style={{
@@ -298,6 +321,7 @@ export default function WhatIfAnalysis({ initialCase, config }) {
 
                   <input
                     type="range"
+                    aria-label={`${guide.title} simulated value`}
                     min={featKey === 'Historical_Occurrence' ? 0 : 1}
                     max={10}
                     step={1}
@@ -354,7 +378,7 @@ export default function WhatIfAnalysis({ initialCase, config }) {
                   color: isMitigated ? '#10b981' : (isEscalated ? '#ef4444' : '#71717a'),
                   marginTop: '2px'
                 }}>
-                  {scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
+                  {scoreDelta === null ? '--' : scoreDelta > 0 ? `+${scoreDelta}` : scoreDelta}
                 </span>
               </div>
 
@@ -379,8 +403,9 @@ export default function WhatIfAnalysis({ initialCase, config }) {
               border: '1px solid #27272a',
               lineHeight: 1.4
             }}>
-              {comp.summary || 'Adjust simulated parameters to observe model consensus response.'}
+              {comp.summary || (loading ? 'Calculating the scenario against the selected model…' : 'Run a simulation to compare the baseline with your modified scenario.')}
             </p>
+            {loading && <span className="loading-indicator" role="status">Updating scenario…</span>}
           </div>
 
           {/* Probability Vectors */}
