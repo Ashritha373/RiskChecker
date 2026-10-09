@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Trash2, 
   Download, 
@@ -13,22 +13,25 @@ export default function History({ onSelectCaseForWhatIf, onSelectCaseForAssessme
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [riskFilter, setRiskFilter] = useState('All');
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.getHistory(100);
       setHistory(res);
     } catch (err) {
       console.error('History load error:', err);
+      setError(err.message || 'Saved assessments could not be loaded.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this assessment log?')) return;
@@ -154,7 +157,14 @@ export default function History({ onSelectCaseForWhatIf, onSelectCaseForAssessme
       </div>
 
       {/* History Items */}
-      {filteredHistory.length === 0 ? (
+      {error ? (
+        <div className="status-message status-error" role="alert">
+          <div><strong>History unavailable</strong><span>{error}</span></div>
+          <button type="button" className="btn-secondary" onClick={loadHistory}>Retry</button>
+        </div>
+      ) : loading ? (
+        <div className="clean-box data-unavailable" role="status">Loading saved assessments…</div>
+      ) : filteredHistory.length === 0 ? (
         <div className="clean-box" style={{ padding: '36px', textAlign: 'center' }}>
           <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#f4f4f5' }}>No Assessment Logs</h4>
           <p style={{ fontSize: '12px', color: '#71717a', marginTop: '2px' }}>

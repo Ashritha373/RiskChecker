@@ -1,177 +1,127 @@
 import React, { useState } from 'react';
-import { Shield, User, LogOut, ChevronDown } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  ChevronDown,
+  ClipboardList,
+  Database,
+  GitCompare,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Shield,
+  X,
+} from 'lucide-react';
+
+const navItems = [
+  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+  { id: 'assess', label: 'Risk assessment', icon: ClipboardList },
+  { id: 'what-if', label: 'What-if analysis', icon: GitCompare },
+  { id: 'models', label: 'Model evaluation', icon: BarChart3 },
+  { id: 'dataset', label: 'Dataset explorer', icon: Database },
+  { id: 'history', label: 'Assessment history', icon: Activity },
+];
 
 export default function Navbar({ activeTab, setActiveTab, isConnected, currentUser, onLogout }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    { id: 'dashboard', label: 'Overview' },
-    { id: 'assess', label: 'Risk Assessment' },
-    { id: 'what-if', label: 'What-If Simulation' },
-    { id: 'models', label: 'Model Evaluation' },
-    { id: 'dataset', label: 'Dataset' },
-    { id: 'history', label: 'History' },
-  ];
+  const navigate = (tab) => {
+    setActiveTab(tab);
+    setMobileOpen(false);
+  };
 
   return (
-    <header style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 50,
-      backgroundColor: '#09090b',
-      borderBottom: '1px solid #27272a',
-      padding: '0 24px'
-    }}>
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '54px'
-      }}>
-        {/* Brand */}
-        <div 
-          onClick={() => setActiveTab('dashboard')}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+    <>
+      <header className="mobile-header">
+        <button
+          type="button"
+          className="icon-button mobile-menu-button"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-expanded={mobileOpen}
         >
-          <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '5px',
-            backgroundColor: '#18181b',
-            border: '1px solid #27272a',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Shield size={13} color="#f4f4f5" />
-          </div>
-          <span style={{ fontWeight: 600, fontSize: '13px', color: '#f4f4f5', letterSpacing: '-0.01em' }}>
-            Risk DSS
-          </span>
-        </div>
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        <button type="button" className="brand-lockup" onClick={() => navigate('dashboard')}>
+          <span className="brand-mark"><Shield size={18} /></span>
+          <span>RiskChecker</span>
+        </button>
+        <span className={`connection-state ${isConnected ? 'is-connected' : 'is-disconnected'}`}>
+          <span className="connection-dot" />
+          {isConnected ? 'Connected' : 'Offline'}
+        </span>
+      </header>
 
-        {/* Navigation Tabs */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+      {mobileOpen && <button type="button" className="sidebar-scrim" aria-label="Close navigation menu" onClick={() => setMobileOpen(false)} />}
+
+      <aside className={`app-sidebar ${mobileOpen ? 'sidebar-open' : ''}`} aria-label="Main navigation">
+        <button type="button" className="brand-lockup sidebar-brand" onClick={() => navigate('dashboard')}>
+          <span className="brand-mark"><Shield size={18} /></span>
+          <span className="brand-name">RiskChecker</span>
+        </button>
+        <div className="workspace-label">RISK WORKSPACE</div>
+
+        <nav className="sidebar-nav">
+          {navItems.map(({ id, label, icon: Icon }) => {
+            const selected = activeTab === id || (activeTab === 'result' && id === 'assess');
             return (
               <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '5px',
-                  fontSize: '12px',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#f4f4f5' : '#a1a1aa',
-                  backgroundColor: isActive ? '#18181b' : 'transparent',
-                  border: isActive ? '1px solid #27272a' : '1px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.1s ease'
-                }}
+                type="button"
+                key={id}
+                className={`sidebar-link ${selected ? 'sidebar-link-active' : ''}`}
+                onClick={() => navigate(id)}
+                aria-current={selected ? 'page' : undefined}
               >
-                {item.label}
+                <Icon size={17} strokeWidth={1.8} />
+                <span>{label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Status + Authenticated User Profile & Logout */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#71717a' }}>
-            <div style={{
-              width: '5px',
-              height: '5px',
-              borderRadius: '50%',
-              backgroundColor: isConnected ? '#10b981' : '#ef4444'
-            }} />
-            <span>{isConnected ? 'Connected' : 'Connecting'}</span>
+        <div className="sidebar-bottom">
+          <div className={`sidebar-connection ${isConnected ? 'is-connected' : 'is-disconnected'}`}>
+            <span className="connection-dot" />
+            <span>{isConnected ? 'Backend connected' : 'Backend unavailable'}</span>
           </div>
 
           {currentUser && (
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 8px',
-                  borderRadius: '5px',
-                  backgroundColor: '#18181b',
-                  border: '1px solid #27272a',
-                  color: '#f4f4f5',
-                  fontSize: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                <div style={{
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '50%',
-                  backgroundColor: '#27272a',
-                  fontSize: '9px',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#f4f4f5'
-                }}>
-                  {currentUser.avatarInitials || 'AN'}
-                </div>
-                <span style={{ fontWeight: 500 }}>{currentUser.name || 'Analyst'}</span>
-                <ChevronDown size={11} color="#71717a" />
-              </button>
-
+            <div className="profile-area">
               {profileDropdownOpen && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: '32px',
-                  width: '200px',
-                  backgroundColor: '#121215',
-                  border: '1px solid #27272a',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-                  zIndex: 100
-                }}>
-                  <div style={{ padding: '6px 8px', borderBottom: '1px solid #1f1f23', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#f4f4f5' }}>{currentUser.name}</div>
-                    <div style={{ fontSize: '10px', color: '#71717a' }}>{currentUser.role}</div>
+                <div className="profile-menu">
+                  <div className="profile-menu-user">
+                    <strong>{currentUser.name || 'Analyst'}</strong>
+                    <span>{currentUser.role || 'Risk Analyst'}</span>
                   </div>
-
                   <button
+                    type="button"
+                    className="profile-logout"
                     onClick={() => {
                       setProfileDropdownOpen(false);
                       onLogout();
                     }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: '#ef4444',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      textAlign: 'left'
-                    }}
                   >
-                    <LogOut size={12} />
-                    <span>Sign Out</span>
+                    <LogOut size={15} />
+                    Sign out
                   </button>
                 </div>
               )}
+              <button
+                type="button"
+                className="profile-button"
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                aria-expanded={profileDropdownOpen}
+              >
+                <span className="avatar">{currentUser.avatarInitials || 'AN'}</span>
+                <span className="profile-name">{currentUser.name || 'Analyst'}</span>
+                <ChevronDown size={15} />
+              </button>
             </div>
           )}
+          <div className="sidebar-version">Risk assessment platform</div>
         </div>
-      </div>
-    </header>
+      </aside>
+    </>
   );
 }

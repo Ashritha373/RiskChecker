@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function MetricCard({ title, value, subtitle, badgeText }) {
   return (
-    <div className="clean-box" style={{ padding: '16px' }}>
+    <div className="clean-box metric-card" style={{ padding: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
         <span style={{ fontSize: '12px', color: '#a1a1aa' }}>
           {title}

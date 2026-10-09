@@ -6,7 +6,7 @@ export default function ConfusionMatrix({ matrix = [[0, 0, 0], [0, 0, 0], [0, 0,
   const totalSamples = flatVals.reduce((a, b) => a + b, 0);
 
   return (
-    <div className="clean-box" style={{ padding: '18px' }}>
+    <div className="clean-box confusion-matrix" style={{ padding: '18px' }}>
       <div style={{ marginBottom: '14px' }}>
         <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#f4f4f5' }}>
           Confusion Matrix {modelName && `(${modelName})`}
@@ -59,15 +59,19 @@ export default function ConfusionMatrix({ matrix = [[0, 0, 0], [0, 0, 0], [0, 0,
                       style={{
                         height: '46px',
                         borderRadius: '4px',
-                        backgroundColor: isDiagonal ? '#18181b' : (cellVal > 0 ? 'rgba(239, 68, 68, 0.08)' : '#09090b'),
-                        border: isDiagonal ? '1px solid #3f3f46' : '1px solid #1f1f23',
+                        backgroundColor: isDiagonal
+                          ? `rgba(168, 185, 160, ${0.1 + (cellVal / maxVal) * 0.28})`
+                          : `rgba(235, 198, 174, ${cellVal > 0 ? 0.08 + (cellVal / maxVal) * 0.24 : 0.04})`,
+                        border: '1px solid #e6e5dc',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        color: isDiagonal ? '#465b43' : '#8a655c'
                       }}
+                      aria-label={`${classes[rowIdx]} actual, ${classes[colIdx]} predicted: ${cellVal}`}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: isDiagonal ? '#ffffff' : (cellVal > 0 ? '#ef4444' : '#52525b') }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'inherit' }}>
                         {cellVal}
                       </span>
                       <span style={{ fontSize: '9px', color: '#71717a' }}>{rowPct}%</span>
